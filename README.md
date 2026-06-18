@@ -109,3 +109,7 @@ _該当記事なし_
 ```powershell
 pytest
 ```
+
+## License
+
+MIT License
