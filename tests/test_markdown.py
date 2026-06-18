@@ -1,6 +1,7 @@
 from fetch_qiita_items import (
     QiitaItem,
     build_query,
+    create_outlook_mail,
     parse_users,
     render_markdown,
     resolve_token,
@@ -87,3 +88,87 @@ def test_resolve_token_returns_none_without_cli_or_environment(monkeypatch):
     monkeypatch.delenv("QIITA_TOKEN", raising=False)
 
     assert resolve_token(None) is None
+
+
+class FakeMail:
+    def __init__(self):
+        self.To = None
+        self.Subject = None
+        self.Body = None
+        self.displayed = False
+        self.sent = False
+
+    def Display(self):
+        self.displayed = True
+
+    def Send(self):
+        self.sent = True
+
+
+class FakeOutlook:
+    def __init__(self, mail):
+        self.mail = mail
+        self.created_item_type = None
+
+    def CreateItem(self, item_type):
+        self.created_item_type = item_type
+        return self.mail
+
+
+def test_create_outlook_mail_displays_draft(monkeypatch):
+    monkeypatch.setattr("fetch_qiita_items.sys.platform", "win32")
+    mail = FakeMail()
+    outlook = FakeOutlook(mail)
+
+    def dispatch(name):
+        assert name == "Outlook.Application"
+        return outlook
+
+    create_outlook_mail(
+        body="# Qiita記事一覧\n",
+        to="user@example.com",
+        subject="Qiita記事一覧",
+        send_now=False,
+        dispatch=dispatch,
+    )
+
+    assert outlook.created_item_type == 0
+    assert mail.To == "user@example.com"
+    assert mail.Subject == "Qiita記事一覧"
+    assert mail.Body == "# Qiita記事一覧\n"
+    assert mail.displayed is True
+    assert mail.sent is False
+
+
+def test_create_outlook_mail_sends_when_requested(monkeypatch):
+    monkeypatch.setattr("fetch_qiita_items.sys.platform", "win32")
+    mail = FakeMail()
+    outlook = FakeOutlook(mail)
+
+    create_outlook_mail(
+        body="body",
+        to="user@example.com",
+        subject="subject",
+        send_now=True,
+        dispatch=lambda name: outlook,
+    )
+
+    assert mail.sent is True
+    assert mail.displayed is False
+
+
+def test_create_outlook_mail_rejects_non_windows(monkeypatch):
+    monkeypatch.setattr("fetch_qiita_items.sys.platform", "linux")
+
+    try:
+        create_outlook_mail(
+            body="body",
+            to="user@example.com",
+            subject="subject",
+            send_now=False,
+            dispatch=lambda name: FakeOutlook(FakeMail()),
+        )
+    except RuntimeError as exc:
+        assert "only supported on Windows" in str(exc)
+    else:
+        raise AssertionError("expected RuntimeError")

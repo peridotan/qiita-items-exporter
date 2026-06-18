@@ -48,6 +48,30 @@ python fetch_qiita_items.py --users peridotan --start 2025-04-01 --end 2026-03-3
 
 `QIITA_TOKEN` が未設定でも実行できます。ただし、Qiita API のレート制限にかかりやすくなる場合があります。
 
+## Outlookデスクトップ連携
+
+Windows環境では、生成した Markdown を Outlook デスクトップアプリのメール本文に入れて下書き表示できます。
+
+```powershell
+python fetch_qiita_items.py --users peridotan --start 2025-04-01 --end 2026-03-31 --out qiita_items.md --mail-provider outlook-desktop --mail-to user@example.com
+```
+
+件名を指定する場合:
+
+```powershell
+python fetch_qiita_items.py --users peridotan --start 2025-04-01 --end 2026-03-31 --out qiita_items.md --mail-provider outlook-desktop --mail-to user@example.com --mail-subject "Qiita記事一覧"
+```
+
+`--mail-subject` のデフォルトは `Qiita記事一覧` です。
+
+通常は自動送信せず、Outlook のメール作成画面を表示します。自動送信したい場合だけ `--mail-send-now` を指定します。
+
+```powershell
+python fetch_qiita_items.py --users peridotan --start 2025-04-01 --end 2026-03-31 --out qiita_items.md --mail-provider outlook-desktop --mail-to user@example.com --mail-send-now
+```
+
+送信元は Outlook に設定済みのアカウントです。パスワードやAPIキーの指定は不要です。
+
 ## 出力例
 
 ```markdown

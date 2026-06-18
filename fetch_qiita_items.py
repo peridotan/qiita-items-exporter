@@ -30,6 +30,10 @@ class QiitaApiError(RuntimeError):
     pass
 
 
+class OutlookMailError(RuntimeError):
+    pass
+
+
 def parse_date(value: str) -> str:
     try:
         return date.fromisoformat(value).isoformat()
@@ -172,6 +176,40 @@ def render_markdown(results: dict[str, list[QiitaItem]], *, start: str, end: str
     return "\n".join(lines).rstrip() + "\n"
 
 
+def create_outlook_mail(
+    *,
+    body: str,
+    to: str,
+    subject: str,
+    send_now: bool,
+    dispatch: Any | None = None,
+) -> None:
+    if sys.platform != "win32":
+        raise OutlookMailError(
+            "Outlook desktop integration is only supported on Windows."
+        )
+
+    if dispatch is None:
+        try:
+            from win32com.client import Dispatch
+        except ImportError as exc:
+            raise OutlookMailError(
+                "pywin32 is required for Outlook desktop integration."
+            ) from exc
+        dispatch = Dispatch
+
+    outlook = dispatch("Outlook.Application")
+    mail = outlook.CreateItem(0)
+    mail.To = to
+    mail.Subject = subject
+    mail.Body = body
+
+    if send_now:
+        mail.Send()
+    else:
+        mail.Display()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Fetch Qiita items for multiple users and write Markdown."
@@ -189,6 +227,22 @@ def build_parser() -> argparse.ArgumentParser:
         "--token",
         help="Qiita API access token. If omitted, QIITA_TOKEN is used.",
     )
+    parser.add_argument(
+        "--mail-provider",
+        choices=["outlook-desktop"],
+        help="Mail provider to use after writing Markdown.",
+    )
+    parser.add_argument("--mail-to", help="Mail recipient address.")
+    parser.add_argument(
+        "--mail-subject",
+        default="Qiita記事一覧",
+        help="Mail subject. Default: Qiita記事一覧",
+    )
+    parser.add_argument(
+        "--mail-send-now",
+        action="store_true",
+        help="Send the Outlook mail immediately instead of displaying a draft.",
+    )
     return parser
 
 
@@ -198,6 +252,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.start > args.end:
         parser.error("--start must be earlier than or equal to --end")
+
+    if args.mail_provider == "outlook-desktop" and not args.mail_to:
+        parser.error("--mail-to is required when --mail-provider outlook-desktop is used")
 
     token = resolve_token(args.token)
     results: dict[str, list[QiitaItem]] = {}
@@ -218,6 +275,19 @@ def main(argv: list[str] | None = None) -> int:
 
     output = render_markdown(results, start=args.start, end=args.end)
     Path(args.out).write_text(output, encoding="utf-8")
+
+    if args.mail_provider == "outlook-desktop":
+        try:
+            create_outlook_mail(
+                body=output,
+                to=args.mail_to,
+                subject=args.mail_subject,
+                send_now=args.mail_send_now,
+            )
+        except OutlookMailError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
     return 0
 
 
