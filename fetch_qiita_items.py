@@ -50,6 +50,10 @@ def build_query(user: str, start: str, end: str) -> str:
     return f"user:{user} created:>={start} created:<={end}"
 
 
+def resolve_token(cli_token: str | None) -> str | None:
+    return cli_token or os.environ.get("QIITA_TOKEN")
+
+
 def request_items(
     session: requests.Session,
     *,
@@ -181,6 +185,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--start", required=True, type=parse_date, help="YYYY-MM-DD")
     parser.add_argument("--end", required=True, type=parse_date, help="YYYY-MM-DD")
     parser.add_argument("--out", required=True, help="Output Markdown file path")
+    parser.add_argument(
+        "--token",
+        help="Qiita API access token. If omitted, QIITA_TOKEN is used.",
+    )
     return parser
 
 
@@ -191,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.start > args.end:
         parser.error("--start must be earlier than or equal to --end")
 
-    token = os.environ.get("QIITA_TOKEN")
+    token = resolve_token(args.token)
     results: dict[str, list[QiitaItem]] = {}
 
     with requests.Session() as session:

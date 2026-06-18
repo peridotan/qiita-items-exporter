@@ -1,4 +1,10 @@
-from fetch_qiita_items import QiitaItem, build_query, parse_users, render_markdown
+from fetch_qiita_items import (
+    QiitaItem,
+    build_query,
+    parse_users,
+    render_markdown,
+    resolve_token,
+)
 
 
 def test_render_markdown_groups_items_by_user():
@@ -63,3 +69,21 @@ def test_build_query_uses_required_search_conditions():
 
 def test_parse_users_trims_empty_entries():
     assert parse_users(" peridotan, user2,,user3 ") == ["peridotan", "user2", "user3"]
+
+
+def test_resolve_token_prefers_cli_token(monkeypatch):
+    monkeypatch.setenv("QIITA_TOKEN", "env-token")
+
+    assert resolve_token("cli-token") == "cli-token"
+
+
+def test_resolve_token_uses_environment_token(monkeypatch):
+    monkeypatch.setenv("QIITA_TOKEN", "env-token")
+
+    assert resolve_token(None) == "env-token"
+
+
+def test_resolve_token_returns_none_without_cli_or_environment(monkeypatch):
+    monkeypatch.delenv("QIITA_TOKEN", raising=False)
+
+    assert resolve_token(None) is None

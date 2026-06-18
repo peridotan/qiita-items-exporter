@@ -29,12 +29,22 @@ user:<ユーザID> created:>=<開始日> created:<=<終了日>
 
 ## トークン
 
-アクセストークンを使う場合:
+通常は環境変数 `QIITA_TOKEN` にアクセストークンを設定して実行します。
 
 ```powershell
 $env:QIITA_TOKEN = "your-token"
 python fetch_qiita_items.py --users peridotan --start 2025-04-01 --end 2026-03-31 --out qiita_items.md
 ```
+
+CLI引数で `--token` を指定することもできます。
+
+```powershell
+python fetch_qiita_items.py --users peridotan --start 2025-04-01 --end 2026-03-31 --out qiita_items.md --token your-token
+```
+
+トークンの優先順位は `--token`、`QIITA_TOKEN`、未認証の順です。
+
+`--token` はシェル履歴に残る可能性があるため、通常は `QIITA_TOKEN` の利用を推奨します。
 
 `QIITA_TOKEN` が未設定でも実行できます。ただし、Qiita API のレート制限にかかりやすくなる場合があります。
 
